@@ -1,0 +1,10 @@
+---
+# Master Enterprise Playbook Entrypoint
+
+# Step 1: Enforce security baseline across all target machines
+- name: Apply common OS hardening
+  import_playbook: common.yml
+
+# Step 2: Deploy application stack wrapped with ITSM change tracking
+- name: Execute stack deployment with ITSM tracking
+  import_playbook: itsm_callback.yml

@@ -1,0 +1,14 @@
+---
+# Defaults for roles/database
+db_port: 3306
+db_bind_address: 127.0.0.1
+db_name: app_db
+db_user: app_user
+db_root_password: "change_me_root_123"
+db_user_password: "change_me_user_123"
+
+# Performance configs
+db_max_connections: 100
+db_innodb_buffer_pool_size: 128M
+db_character_set: utf8mb4
+db_collation: utf8mb4_unicode_ci

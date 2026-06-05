@@ -1,0 +1,21 @@
+---
+# Play 1: Configure Database Tier
+- name: Deploy and secure Database nodes
+  hosts: databases
+  gather_facts: true
+  roles:
+    - role: database
+
+# Play 2: Configure Web Server Tier
+- name: Deploy and configure Web Server nodes
+  hosts: webservers
+  gather_facts: true
+  roles:
+    - role: webserver
+
+# Play 3: Configure Load Balancer Tier
+- name: Deploy and configure Load Balancer nodes
+  hosts: loadbalancers
+  gather_facts: true
+  roles:
+    - role: loadbalancer

@@ -1,0 +1,35 @@
+---
+# Play 1: Notify ITSM Deployment Started
+- name: Log ITSM Execution Start
+  hosts: localhost
+  gather_facts: false
+  vars:
+    change_ticket_id: "CHG0094823"
+    webhook_url: "https://outlook.office.com/webhook/mock-itsm-channel"
+  
+  tasks:
+    - name: Notify ITSM / ServiceNow - Update status to "In Progress"
+      ansible.builtin.debug:
+        msg: >
+          [ITSM CALLBACK] Linking playbook execution to Change Ticket {{ change_ticket_id }}.
+          Sending webhook payload: { "ticket_id": "{{ change_ticket_id }}", "status": "In Progress", "actor": "Ansible Automation Platform" }
+
+# Play 2: Trigger stack deployment playbook
+- name: Run Deploy Stack Playbook
+  ansible.builtin.import_playbook: deploy_stack.yml
+
+# Play 3: Notify ITSM Deployment Finished
+- name: Log ITSM Execution Completion
+  hosts: localhost
+  gather_facts: false
+  vars:
+    change_ticket_id: "CHG0094823"
+    webhook_url: "https://outlook.office.com/webhook/mock-itsm-channel"
+
+  tasks:
+    - name: Notify ITSM / ServiceNow - Update status to "Completed Successfully"
+      ansible.builtin.debug:
+        msg: >
+          [ITSM CALLBACK] Playbook execution completed successfully.
+          Closing Change Ticket {{ change_ticket_id }} with status 'SUCCESS'.
+          Sending Webhook payload: { "ticket_id": "{{ change_ticket_id }}", "status": "Closed", "close_code": "Successful" }

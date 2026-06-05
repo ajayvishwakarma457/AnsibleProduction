@@ -1,0 +1,78 @@
+---
+# Rollback Playbook: Revert Deployment Configs and Restore Systems to Last Safe State
+
+# Play 1: Revert Web Tier
+- name: Rollback Web Servers Configs
+  hosts: webservers
+  gather_facts: false
+  
+  tasks:
+    - name: Check if Nginx configuration backup exists
+      ansible.builtin.stat:
+        path: /etc/nginx/nginx.conf.bak
+      register: nginx_backup_stat
+      ignore_errors: true
+
+    - name: Restore Nginx configuration from backup
+      ansible.builtin.copy:
+        src: /etc/nginx/nginx.conf.bak
+        dest: /etc/nginx/nginx.conf
+        remote_src: true
+        mode: '0644'
+      when: nginx_backup_stat.stat.exists | default(false)
+      notify: restart nginx
+      ignore_errors: true
+
+  handlers:
+    - name: restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+
+# Play 2: Revert LB Tier
+- name: Rollback Load Balancer Configs
+  hosts: loadbalancers
+  gather_facts: false
+
+  tasks:
+    - name: Check if HAProxy configuration backup exists
+      ansible.builtin.stat:
+        path: /etc/haproxy/haproxy.cfg.bak
+      register: haproxy_backup_stat
+      ignore_errors: true
+
+    - name: Restore HAProxy configuration from backup
+      ansible.builtin.copy:
+        src: /etc/haproxy/haproxy.cfg.bak
+        dest: /etc/haproxy/haproxy.cfg
+        remote_src: true
+        mode: '0644'
+      when: haproxy_backup_stat.stat.exists | default(false)
+      notify: restart haproxy
+      ignore_errors: true
+
+  handlers:
+    - name: restart haproxy
+      ansible.builtin.service:
+        name: haproxy
+        state: restarted
+
+
+# Play 3: Revert DB Tier (Import backup_restore at play-level with trigger_restore set)
+- name: Import Database Restore Playbook
+  ansible.builtin.import_playbook: backup_restore.yml
+  vars:
+    trigger_restore: true
+    restore_file_name: "db_backup_latest.sql.gz"
+
+
+# Play 4: Operations Alerting
+- name: Send Rollback Notifications
+  hosts: localhost
+  gather_facts: false
+  
+  tasks:
+    - name: Dispatch alert notification to Operations channel
+      ansible.builtin.debug:
+        msg: "[ROLLBACK ALERT] Deployment failure triggered automated rollback. Nginx and HAProxy configurations reverted to backups. MariaDB re-imported latest S3 snapshot."

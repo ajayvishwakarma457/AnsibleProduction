@@ -1,0 +1,16 @@
+---
+# Prod Load Balancer Configuration
+lb_port: 80
+lb_ssl_port: 443
+
+# HAProxy statistics dashboard properties
+lb_stats_enabled: true
+lb_stats_port: 9000
+lb_stats_user: admin
+# Reference stats password from Ansible Vault
+lb_stats_pass: "{{ vault_lb_stats_password }}"
+
+# Timeout settings
+lb_timeout_connect: 5000ms
+lb_timeout_client: 50000ms
+lb_timeout_server: 50000ms

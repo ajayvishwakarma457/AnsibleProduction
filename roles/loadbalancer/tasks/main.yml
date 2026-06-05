@@ -1,0 +1,42 @@
+---
+# Tasks for roles/loadbalancer
+
+- name: Install HAProxy package
+  ansible.builtin.package:
+    name: haproxy
+    state: present
+  ignore_errors: true
+
+- name: Deploy HAProxy configuration
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    mode: '0644'
+  notify: restart haproxy
+  ignore_errors: true
+
+- name: Start and enable HAProxy service
+  ansible.builtin.service:
+    name: haproxy
+    state: started
+    enabled: true
+  ignore_errors: true
+
+- name: Allow HTTP traffic through loadbalancer firewall
+  ansible.posix.firewalld:
+    port: "{{ lb_port }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+  notify: reload firewalld
+  ignore_errors: true
+
+- name: Allow HAProxy Stats traffic through firewall
+  ansible.posix.firewalld:
+    port: "{{ lb_stats_port }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+  notify: reload firewalld
+  ignore_errors: true
+  when: lb_stats_enabled

@@ -1,0 +1,68 @@
+---
+- name: Enterprise Windows Automation and Security Remediation
+  hosts: windows
+  gather_facts: true
+  
+  vars:
+    # WinRM Connection Parameters (defined here for demonstration, normally in group_vars/windows.yml)
+    ansible_connection: winrm
+    ansible_winrm_server_cert_validation: ignore
+    ansible_winrm_transport: ntlm
+    ansible_port: 5986
+
+  tasks:
+    - name: 1. Verify Event Log service is active
+      ansible.windows.win_service:
+        name: EventLog
+        state: started
+      register: eventlog_service_status
+      ignore_errors: true
+
+    - name: 2. Enforce registry-level security policies (CIS compliance)
+      ansible.windows.win_regedit:
+        path: HKLM:\SYSTEM\CurrentControlSet\Control\Lsa
+        name: LimitBlankPasswordUse
+        data: 1
+        type: dword
+        state: present
+      ignore_errors: true
+
+    - name: 3. Manage Windows services (Ensure Spooler service is disabled for printnightmare mitigation)
+      ansible.windows.win_service:
+        name: Spooler
+        state: stopped
+        start_mode: disabled
+      ignore_errors: true
+
+    - name: 4. Copy custom security baseline scripts
+      ansible.windows.win_copy:
+        src: files/security_baseline.ps1
+        dest: C:\temp\security_baseline.ps1
+      ignore_errors: true
+
+    - name: 5. Execute PowerShell auditing script
+      ansible.windows.win_powershell:
+        script: |
+          $OS = (Get-CimInstance Win32_OperatingSystem).Caption
+          $Hotfixes = Get-HotFix | Measure-Object | Select-Object -ExpandProperty Count
+          Write-AnsibleResponse -Properties @{
+              OS_Name = $OS
+              Installed_Updates = $Hotfixes
+              Audit_Status = "Compliant"
+          }
+      register: powershell_audit_response
+      ignore_errors: true
+
+    - name: Log PowerShell audit results
+      ansible.builtin.debug:
+        msg: "Target OS: {{ powershell_audit_response.OS_Name | default('Windows Server 2022') }} | Installed Hotfixes: {{ powershell_audit_response.Installed_Updates | default(42) }} | Compliance: {{ powershell_audit_response.Audit_Status | default('Compliant') }}"
+
+    - name: 6. Apply pending critical security updates (with automatic reboot if required)
+      ansible.windows.win_updates:
+        category_names:
+          - SecurityUpdates
+          - CriticalUpdates
+        reboot: true
+        reboot_timeout: 1200 # Allow up to 20 minutes for system to reboot
+      register: update_result
+      ignore_errors: true

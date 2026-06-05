@@ -1,0 +1,21 @@
+---
+# Defaults for roles/webserver
+web_server_port: 80
+web_server_ssl_port: 443
+web_server_domain: localhost
+web_server_doc_root: /var/www/html
+
+# Nginx parameters
+web_server_client_max_body_size: 10m
+web_server_keepalive_timeout: 65
+
+# SSL parameters
+ssl_cert_dir: /etc/nginx/ssl
+ssl_key_path: "{{ ssl_cert_dir }}/nginx.key"
+ssl_crt_path: "{{ ssl_cert_dir }}/nginx.crt"
+
+ssl_cert_country: US
+ssl_cert_state: CA
+ssl_cert_locality: San Francisco
+ssl_cert_organization: Enterprise Inc
+ssl_cert_common_name: "{{ web_server_domain }}"

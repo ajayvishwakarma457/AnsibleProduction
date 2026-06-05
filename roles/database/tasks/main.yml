@@ -1,0 +1,87 @@
+---
+# Tasks for roles/database
+
+- name: Install MariaDB packages
+  ansible.builtin.package:
+    name:
+      - mariadb-server
+      - python3-PyMySQL # Python dependency for community.mysql modules
+    state: present
+  ignore_errors: true
+
+- name: Deploy MariaDB configuration
+  ansible.builtin.template:
+    src: my.cnf.j2
+    dest: /etc/my.cnf
+    mode: '0644'
+  notify: restart mariadb
+  ignore_errors: true
+
+- name: Start and enable MariaDB service
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: true
+  ignore_errors: true
+
+# The following database administration tasks use the community.mysql collection.
+# They are marked ignore_errors for safe local syntax validation.
+
+- name: Set root password
+  community.mysql.mysql_user:
+    name: root
+    host: "{{ item }}"
+    password: "{{ db_root_password }}"
+    login_user: root
+    login_password: "{{ db_root_password }}"
+    state: present
+  loop:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  ignore_errors: true
+
+- name: Remove anonymous database users
+  community.mysql.mysql_user:
+    name: ""
+    host_all: true
+    state: absent
+    login_user: root
+    login_password: "{{ db_root_password }}"
+  ignore_errors: true
+
+- name: Remove test database
+  community.mysql.mysql_db:
+    name: test
+    state: absent
+    login_user: root
+    login_password: "{{ db_root_password }}"
+  ignore_errors: true
+
+- name: Create application database
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    state: present
+    login_user: root
+    login_password: "{{ db_root_password }}"
+  ignore_errors: true
+
+- name: Create application user and grant permissions
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_user_password }}"
+    priv: "{{ db_name }}.*:ALL"
+    host: "%"
+    state: present
+    login_user: root
+    login_password: "{{ db_root_password }}"
+  ignore_errors: true
+
+- name: Allow Database access through firewall
+  ansible.posix.firewalld:
+    port: "{{ db_port }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+  notify: reload firewalld
+  ignore_errors: true

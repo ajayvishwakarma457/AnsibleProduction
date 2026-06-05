@@ -1,0 +1,16 @@
+---
+# Prod Database Configuration
+db_port: 3306
+db_bind_address: 0.0.0.0
+db_name: app_prod_db
+db_user: app_prod_user
+
+# Decoupled Secret Passwords referenced from Ansible Vault
+db_root_password: "{{ vault_db_root_password }}"
+db_user_password: "{{ vault_db_user_password }}"
+
+# Performance configuration
+db_max_connections: 500
+db_innodb_buffer_pool_size: 2G
+db_character_set: utf8mb4
+db_collation: utf8mb4_unicode_ci

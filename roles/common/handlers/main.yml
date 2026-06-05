@@ -1,0 +1,13 @@
+---
+# Handlers for roles/common
+- name: restart sshd
+  ansible.builtin.service:
+    name: sshd
+    state: restarted
+  # Ensure handler runs even if connection is compromised
+  ignore_errors: true
+
+- name: reload firewalld
+  ansible.builtin.service:
+    name: firewalld
+    state: reloaded

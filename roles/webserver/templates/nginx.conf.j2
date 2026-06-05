@@ -1,0 +1,76 @@
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log /var/log/nginx/access.log main;
+
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout {{ web_server_keepalive_timeout }};
+    types_hash_max_size 2048;
+    client_max_body_size {{ web_server_client_max_body_size }};
+
+    # Hide Nginx version for security
+    server_tokens off;
+
+    # SSL/TLS Hardening
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384';
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # Security Headers
+    add_header X-Frame-Options DENY always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+
+    # HTTP to HTTPS Redirect
+    server {
+        listen {{ web_server_port }} default_server;
+        listen [::]:{{ web_server_port }} default_server;
+        server_name {{ web_server_domain }};
+        return 301 https://$host$request_uri;
+    }
+
+    # HTTPS Server Block
+    server {
+        listen {{ web_server_ssl_port }} ssl http2;
+        listen [::]:{{ web_server_ssl_port }} ssl http2;
+        server_name {{ web_server_domain }};
+
+        ssl_certificate {{ ssl_crt_path }};
+        ssl_certificate_key {{ ssl_key_path }};
+
+        root {{ web_server_doc_root }};
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+
+        # Health check endpoint for Load Balancers
+        location /health {
+            access_log off;
+            add_header Content-Type text/plain;
+            return 200 'OK';
+        }
+    }
+}

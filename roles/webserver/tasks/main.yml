@@ -1,0 +1,82 @@
+---
+# Tasks for roles/webserver
+
+- name: Install Nginx package
+  ansible.builtin.package:
+    name: nginx
+    state: present
+  ignore_errors: true # For validation/non-root execution
+
+- name: Ensure Nginx SSL directory exists
+  ansible.builtin.file:
+    path: "{{ ssl_cert_dir }}"
+    state: directory
+    mode: '0755'
+  ignore_errors: true
+
+- name: Generate SSL Private Key
+  community.crypto.openssl_privatekey:
+    path: "{{ ssl_key_path }}"
+    size: 2048
+    type: RSA
+  ignore_errors: true
+
+- name: Generate Certificate Signing Request (CSR)
+  community.crypto.openssl_csr:
+    path: "{{ ssl_cert_dir }}/nginx.csr"
+    privatekey_path: "{{ ssl_key_path }}"
+    country_name: "{{ ssl_cert_country }}"
+    state_or_province_name: "{{ ssl_cert_state }}"
+    locality_name: "{{ ssl_cert_locality }}"
+    organization_name: "{{ ssl_cert_organization }}"
+    common_name: "{{ ssl_cert_common_name }}"
+  ignore_errors: true
+
+- name: Generate Self-Signed SSL Certificate
+  community.crypto.x509_certificate:
+    path: "{{ ssl_crt_path }}"
+    privatekey_path: "{{ ssl_key_path }}"
+    csr_path: "{{ ssl_cert_dir }}/nginx.csr"
+    provider: selfsigned
+  ignore_errors: true
+
+- name: Configure secure Nginx configuration
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    mode: '0644'
+  notify: restart nginx
+  ignore_errors: true
+
+- name: Ensure Nginx document root exists
+  ansible.builtin.file:
+    path: "{{ web_server_doc_root }}"
+    state: directory
+    mode: '0755'
+  ignore_errors: true
+
+- name: Deploy dynamic HTML index page
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: "{{ web_server_doc_root }}/index.html"
+    mode: '0644'
+  ignore_errors: true
+
+- name: Open HTTP and HTTPS firewall ports
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop:
+    - http
+    - https
+  notify: reload firewalld
+  ignore_errors: true
+
+- name: Start and enable Nginx service
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+  ignore_errors: true

@@ -1,0 +1,24 @@
+---
+# Compliance Exception Register
+# Lists all business-approved exceptions to security policies
+
+active_exceptions:
+  # To activate an exception and bypass compliance checks, uncomment it below:
+  # - "custom_ssh_port"
+  # - "ssh_root_login"
+  # - "sysctl_hardening"
+
+exceptions_metadata:
+  custom_ssh_port:
+    approved_by: "Security Governance Board"
+    approver_id: "SEC-APP-923"
+    expiry_date: "2026-12-31"
+    business_justification: "Legacy configuration systems require default SSH port 22 for connectivity."
+    compensating_control: "IP-level firewall whitelisting enforced on port 22."
+
+  ssh_root_login:
+    approved_by: "CISO Office"
+    approver_id: "SEC-APP-042"
+    expiry_date: "2026-08-15"
+    business_justification: "Automated provisioning scripts require direct root execution during bootstrap phase."
+    compensating_control: "SSH root keys restricted using Option 'command' limiting scope."

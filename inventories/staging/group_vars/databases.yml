@@ -1,0 +1,16 @@
+---
+# Staging Database Configuration
+db_port: 3306
+db_bind_address: 0.0.0.0
+db_name: app_staging_db
+db_user: app_staging_user
+
+# Mock passwords for Staging (Vault used in prod)
+db_root_password: staging_root_secure_password_456
+db_user_password: staging_user_secure_password_456
+
+# Performance configuration
+db_max_connections: 150
+db_innodb_buffer_pool_size: 512M
+db_character_set: utf8mb4
+db_collation: utf8mb4_unicode_ci

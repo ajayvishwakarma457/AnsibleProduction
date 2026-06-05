@@ -1,0 +1,61 @@
+global
+    log         127.0.0.1 local2
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+
+    # Secure SSL/TLS settings
+    ssl-default-bind-ciphers Profile=SYSTEM
+    ssl-default-bind-options ssl-min-ver TLSv1.2
+
+defaults
+    log                     global
+    mode                    http
+    option                  httplog
+    option                  dontlognull
+    option                  http-server-close
+    option                  forwardfor      except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         {{ lb_timeout_connect }}
+    timeout client          {{ lb_timeout_client }}
+    timeout server          {{ lb_timeout_server }}
+    timeout http-keep-alive 10s
+    timeout check           10s
+    maxconn                 3000
+
+{% if lb_stats_enabled %}
+# HAProxy Dashboard
+listen stats
+    bind *:{{ lb_stats_port }}
+    mode http
+    stats enable
+    stats uri /
+    stats refresh 5s
+    stats realm HAProxy\ Statistics
+    stats auth {{ lb_stats_user }}:{{ lb_stats_pass }}
+{% endif %}
+
+# Frontend Configuration
+frontend main
+    bind *:{{ lb_port }}
+    # Forward original client IP
+    http-request set-header X-Forwarded-Proto https if { ssl_fc }
+    default_backend web_servers
+
+# Backend configuration (dynamically populated from webservers inventory group)
+backend web_servers
+    balance     roundrobin
+    option      httpchk GET /health
+    http-check  expect status 200
+    cookie      SERVERID insert indirect nocache
+    
+    # Loop over all hosts in 'webservers' group
+    {% for host in groups['webservers'] %}
+    server {{ host }} {{ hostvars[host]['ansible_host'] }}:80 check cookie {{ host }}
+    {% endfor %}

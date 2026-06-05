@@ -1,0 +1,32 @@
+---
+# Prod Environment Global Variables
+env_name: prod
+
+# SSH Configuration for targets
+ansible_user: deploy_prod
+ansible_ssh_private_key_file: "~/.ssh/id_rsa_prod"
+
+# System packages to be installed by roles/common
+common_system_packages:
+  - curl
+  - wget
+  - git
+  - tar
+  - rsync
+  - firewalld
+  - htop
+
+# Hardening configurations (Strict production requirements)
+common_ssh_port: 2222
+common_ssh_permit_root_login: "no"
+common_ssh_password_authentication: "no"
+
+# Sysctl hardening properties
+common_sysctl_settings:
+  - { name: "net.ipv4.ip_forward", value: "0" }
+  - { name: "net.ipv4.conf.all.accept_source_route", value: "0" }
+  - { name: "net.ipv4.conf.all.accept_redirects", value: "0" }
+  - { name: "net.ipv4.conf.all.secure_redirects", value: "0" }
+  - { name: "net.ipv4.conf.all.log_martians", value: "1" }
+  - { name: "net.ipv4.conf.all.rp_filter", value: "1" }
+  - { name: "net.ipv4.icmp_echo_ignore_broadcasts", value: "1" }

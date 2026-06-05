@@ -1,0 +1,20 @@
+---
+# Prod Web Servers Configuration
+web_server_port: 80
+web_server_ssl_port: 443
+web_server_domain: app.enterprise.com
+web_server_doc_root: /var/web/app
+
+# Nginx Hardened configuration settings
+web_server_client_max_body_size: 20m
+web_server_keepalive_timeout: 65
+
+# Self-signed certificate details for prod (normally real CA certificates)
+ssl_cert_country: US
+ssl_cert_state: NY
+ssl_cert_locality: New York
+ssl_cert_organization: Enterprise Production Corp
+ssl_cert_common_name: "{{ web_server_domain }}"
+ssl_cert_dir: /etc/nginx/ssl
+ssl_key_path: "{{ ssl_cert_dir }}/nginx.key"
+ssl_crt_path: "{{ ssl_cert_dir }}/nginx.crt"

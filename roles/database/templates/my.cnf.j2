@@ -1,0 +1,28 @@
+[mysqld]
+datadir=/var/lib/mysql
+socket=/var/lib/mysql/mysql.sock
+log-error=/var/log/mariadb/mariadb.log
+pid-file=/run/mariadb/mariadb.pid
+
+# Network boundaries
+port = {{ db_port }}
+bind-address = {{ db_bind_address }}
+
+# UTF-8 Encoding
+character-set-server = {{ db_character_set }}
+collation-server = {{ db_collation }}
+
+# Performance Tuning
+max_connections = {{ db_max_connections }}
+innodb_buffer_pool_size = {{ db_innodb_buffer_pool_size }}
+innodb_log_file_size = 64M
+innodb_flush_log_at_trx_commit = 1
+innodb_file_per_table = 1
+
+# Disallow symbolic links to prevent security issues
+symbolic-links=0
+
+[client]
+port = {{ db_port }}
+socket=/var/lib/mysql/mysql.sock
+default-character-set = {{ db_character_set }}

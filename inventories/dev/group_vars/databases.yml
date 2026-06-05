@@ -1,0 +1,16 @@
+---
+# Dev Database Configuration
+db_port: 3306
+db_bind_address: 0.0.0.0
+db_name: app_dev_db
+db_user: app_dev_user
+
+# Mock passwords for Dev environment (Vault used in prod)
+db_root_password: dev_root_secure_password_123
+db_user_password: dev_user_secure_password_123
+
+# Performance configuration
+db_max_connections: 50
+db_innodb_buffer_pool_size: 256M
+db_character_set: utf8mb4
+db_collation: utf8mb4_unicode_ci

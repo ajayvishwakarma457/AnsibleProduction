@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Enterprise Managed Node - {{ ansible_hostname }}</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            color: #0056b3;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 10px;
+        }
+        .metric {
+            margin: 15px 0;
+            font-size: 1.1em;
+        }
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+        .status-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Deployment Node Details</h1>
+        <div class="metric">
+            <span class="label">Host Name:</span> {{ ansible_hostname }}
+        </div>
+        <div class="metric">
+            <span class="label">IP Address:</span> {{ ansible_default_ipv4.address | default(ansible_host) }}
+        </div>
+        <div class="metric">
+            <span class="label">Environment:</span> <span class="status-badge">{{ env_name | upper }}</span>
+        </div>
+        <div class="metric">
+            <span class="label">Managed OS:</span> {{ ansible_distribution }} {{ ansible_distribution_version }}
+        </div>
+        <div class="metric">
+            <span class="label">Ansible Core Version:</span> {{ ansible_version.string }}
+        </div>
+        <div class="metric">
+            <span class="label">Last Configuration Sync:</span> {{ lookup('pipe', 'date "+%Y-%m-%d %H:%M:%S %Z"') }}
+        </div>
+    </div>
+</body>
+</html>

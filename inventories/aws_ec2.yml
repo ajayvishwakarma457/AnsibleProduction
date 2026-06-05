@@ -1,0 +1,44 @@
+---
+# Configuration for amazon.aws.aws_ec2 inventory plugin
+plugin: amazon.aws.aws_ec2
+
+# Specify target AWS regions
+regions:
+  - us-east-1
+  - us-west-2
+
+# Filter instances by running state and specific environment tags
+filters:
+  instance-state-name:
+    - running
+  tag:Environment:
+    - prod
+    - staging
+
+# Configure authentication boundaries (prefer IAM roles/profiles in AAP)
+# aws_profile: default
+
+# Construct groups dynamically based on tags and environment properties
+keyed_groups:
+  # Creates groups based on the value of the 'Environment' tag (e.g., env_prod, env_staging)
+  - key: tags.Environment
+    prefix: env
+  # Creates groups based on the value of the 'Role' tag (e.g., role_webserver, role_database)
+  - key: tags.Role
+    prefix: role
+
+# Map dynamic hosts to inventory groups expected by our playbooks
+groups:
+  webservers: "'role_webserver' in group_names"
+  databases: "'role_database' in group_names"
+  loadbalancers: "'role_loadbalancer' in group_names"
+
+# Define hostname variables
+hostnames:
+  - dns-name
+  - ip-address
+  - private-ip-address
+
+# Compose variables on the fly
+compose:
+  ansible_host: private_ip_address

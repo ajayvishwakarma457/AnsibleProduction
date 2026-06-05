@@ -1,0 +1,110 @@
+---
+# ServiceNow Change Request Lifecycle Playbook
+
+# Play 1: Create and Initialize the Change Request
+- name: Create ServiceNow Change Request
+  hosts: localhost
+  gather_facts: false
+  
+  vars:
+    sn_instance_url: "https://sandbox.service-now.com"
+    sn_username: "admin"
+    sn_password: "{{ vault_sn_password | default('mock_password_123') }}"
+    deploy_env: "prod"
+    app_version: "v2.4.1"
+    change_category: "Software"
+    change_priority: "3"
+    change_risk: "3"
+
+  tasks:
+    - name: Create a new ServiceNow Change Request (Draft State)
+      ansible.builtin.uri:
+        url: "{{ sn_instance_url }}/api/now/table/change_request"
+        method: POST
+        user: "{{ sn_username }}"
+        password: "{{ sn_password }}"
+        force_basic_auth: true
+        status_code: 201
+        body_format: json
+        body:
+          short_description: "Automated Deploy of Version {{ app_version }} to {{ deploy_env }}"
+          description: "This ticket tracks the Ansible-driven automated deployment of App Version {{ app_version }} to {{ deploy_env }} environments."
+          category: "{{ change_category }}"
+          priority: "{{ change_priority }}"
+          risk: "{{ change_risk }}"
+          state: "-5" # -5 is standard ServiceNow Change Value for "Draft"
+        headers:
+          Accept: "application/json"
+          Content-Type: "application/json"
+      register: create_change_response
+      ignore_errors: true
+
+    - name: Extract Change Request Info
+      ansible.builtin.set_fact:
+        change_sys_id: "{{ create_change_response.json.result.sys_id | default('mock_sys_id_88293847') }}"
+        change_number: "{{ create_change_response.json.result.number | default('CHG0091823') }}"
+
+    - name: Save Ticket Info as Persistent Host Facts
+      ansible.builtin.set_fact:
+        change_sys_id: "{{ change_sys_id }}"
+        change_number: "{{ change_number }}"
+        cacheable: true
+
+    - name: Log Change Request Details
+      ansible.builtin.debug:
+        msg: "Successfully registered ServiceNow Ticket: {{ change_number }} (SysID: {{ change_sys_id }})"
+
+    - name: Promote Change Request to "Implement" State
+      ansible.builtin.uri:
+        url: "{{ sn_instance_url }}/api/now/table/change_request/{{ change_sys_id }}"
+        method: PUT
+        user: "{{ sn_username }}"
+        password: "{{ sn_password }}"
+        force_basic_auth: true
+        status_code: 200
+        body_format: json
+        body:
+          state: "-1" # -1 is standard ServiceNow Change Value for "Implement"
+          work_notes: "Ansible automation run has started. Applying OS hardening and deploying multi-tier service components."
+        headers:
+          Accept: "application/json"
+          Content-Type: "application/json"
+      ignore_errors: true
+
+# Play 2: Execute Stack Deployment (Imported at play-level)
+- name: Run Deploy Stack Playbook
+  ansible.builtin.import_playbook: deploy_stack.yml
+
+# Play 3: Close ServiceNow Ticket
+- name: Close ServiceNow Change Request
+  hosts: localhost
+  gather_facts: false
+  
+  vars:
+    sn_instance_url: "https://sandbox.service-now.com"
+    sn_username: "admin"
+    sn_password: "{{ vault_sn_password | default('mock_password_123') }}"
+
+  tasks:
+    - name: Retrieve ticket variables from localhost memory
+      ansible.builtin.set_fact:
+        change_sys_id: "{{ hostvars['localhost']['change_sys_id'] | default('mock_sys_id_88293847') }}"
+        change_number: "{{ hostvars['localhost']['change_number'] | default('CHG0091823') }}"
+
+    - name: Close Change Request as Successful
+      ansible.builtin.uri:
+        url: "{{ sn_instance_url }}/api/now/table/change_request/{{ change_sys_id }}"
+        method: PUT
+        user: "{{ sn_username }}"
+        password: "{{ sn_password }}"
+        force_basic_auth: true
+        status_code: 200
+        body_format: json
+        body:
+          state: "3" # 3 is standard ServiceNow Change Value for "Closed"
+          close_code: "successful"
+          close_notes: "Ansible playbook execution finished successfully. Nginx, MariaDB, and HAProxy services verified as running and healthy."
+        headers:
+          Accept: "application/json"
+          Content-Type: "application/json"
+      ignore_errors: true

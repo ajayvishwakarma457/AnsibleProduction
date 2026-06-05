@@ -1,0 +1,9 @@
+---
+# Ansible Vault file for Production Secrets.
+# WARNING: In a production environment, this file MUST be encrypted using:
+#   ansible-vault encrypt inventories/prod/group_vars/all/vault.yml
+# When encrypted, the file will be unreadable in git and only decrypted at runtime.
+
+vault_db_root_password: "prod_vault_super_secure_root_password_987654"
+vault_db_user_password: "prod_vault_super_secure_user_password_432109"
+vault_lb_stats_password: "prod_vault_super_secure_stats_password_135790"

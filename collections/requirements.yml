@@ -1,0 +1,17 @@
+---
+# Ansible Galaxy Collections requirements
+collections:
+  - name: amazon.aws
+    version: ">=7.0.0"
+
+  - name: community.general
+    version: ">=8.0.0"
+
+  - name: ansible.posix
+    version: ">=1.5.0"
+
+  - name: community.mysql
+    version: ">=3.8.0"
+
+  - name: community.crypto
+    version: ">=2.15.0"

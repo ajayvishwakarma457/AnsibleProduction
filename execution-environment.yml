@@ -1,0 +1,24 @@
+---
+version: 3
+
+images:
+  base_image:
+    name: registry.redhat.io/ansible-automation-platform-24/ee-minimal-rhel8:latest
+
+dependencies:
+  galaxy: collections/requirements.yml
+  python:
+    - boto3>=1.26.0      # Required for AWS collection (amazon.aws)
+    - botocore>=1.29.0   # Required for AWS collection (amazon.aws)
+    - PyMySQL>=1.0.2     # Required for MariaDB/MySQL configurations (community.mysql)
+    - cryptography>=41.0.0 # Required for SSL/TLS setups (community.crypto)
+  system:
+    - git-core [platform:rpm]
+    - openssl-devel [platform:rpm]
+    - libxml2-devel [platform:rpm]
+
+additional_build_steps:
+  prepend_galaxy:
+    - RUN ansible-galaxy collection install -r collections/requirements.yml
+  append_final:
+    - RUN echo "Custom Enterprise Execution Environment Built Successfully"

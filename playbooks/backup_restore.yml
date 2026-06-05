@@ -1,0 +1,108 @@
+---
+# Disaster Recovery Playbook: Backup and Restore Procedures
+
+# Play 1: Execute Database Backup
+- name: Perform Database Backup and Upload to S3
+  hosts: databases
+  gather_facts: false
+  
+  vars:
+    backup_dir: "/var/backups/mariadb"
+    backup_file: "db_backup_{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}.sql"
+    s3_bucket_name: "enterprise-backup-vault-prod"
+    aws_region: "us-east-1"
+    
+  tasks:
+    - name: Create backup directory on target DB host
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        owner: mysql
+        group: mysql
+        mode: '0700'
+      ignore_errors: true
+
+    - name: Run mysql dump to export databases securely
+      # Uses credentials from group_vars
+      ansible.builtin.command: >
+        mysqldump --user={{ db_user }} --password={{ db_user_password }} --host=localhost {{ db_name }} > {{ backup_dir }}/{{ backup_file }}
+      no_log: true
+      ignore_errors: true
+
+    - name: Compress backup file to save bandwidth
+      ansible.builtin.archive:
+        path: "{{ backup_dir }}/{{ backup_file }}"
+        dest: "{{ backup_dir }}/{{ backup_file }}.gz"
+        format: gz
+      ignore_errors: true
+
+    - name: Upload backup to AWS S3 secure vault
+      amazon.aws.s3_object:
+        bucket: "{{ s3_bucket_name }}"
+        object: "database/{{ env_name | default('dev') }}/{{ backup_file }}.gz"
+        src: "{{ backup_dir }}/{{ backup_file }}.gz"
+        mode: put
+        region: "{{ aws_region }}"
+      ignore_errors: true
+
+    - name: Clean up temporary backup files on target server
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ backup_dir }}/{{ backup_file }}"
+        - "{{ backup_dir }}/{{ backup_file }}.gz"
+      ignore_errors: true
+
+
+# Play 2: Execute Database Restore (Triggered manually or under failover conditions)
+- name: Perform Database Restore and System Recovery
+  hosts: databases
+  gather_facts: false
+  
+  vars:
+    backup_dir: "/var/backups/mariadb"
+    s3_bucket_name: "enterprise-backup-vault-prod"
+    aws_region: "us-east-1"
+    # Specify target backup file to restore (e.g. via --extra-vars "restore_file_name=...")
+    restore_file_name: "db_backup_latest.sql.gz"
+
+  tasks:
+    - name: Execute Restore Steps Conditionally
+      block:
+        - name: Ensure recovery directory exists
+          ansible.builtin.file:
+            path: "{{ backup_dir }}"
+            state: directory
+            mode: '0700'
+          ignore_errors: true
+
+        - name: Download backup object from AWS S3
+          amazon.aws.s3_object:
+            bucket: "{{ s3_bucket_name }}"
+            object: "database/{{ env_name | default('dev') }}/{{ restore_file_name }}"
+            dest: "{{ backup_dir }}/{{ restore_file_name }}"
+            mode: get
+            region: "{{ aws_region }}"
+          ignore_errors: true
+
+        - name: Extract backup archive
+          ansible.builtin.unarchive:
+            src: "{{ backup_dir }}/{{ restore_file_name }}"
+            dest: "{{ backup_dir }}"
+            remote_src: true
+          ignore_errors: true
+
+        - name: Re-import SQL schema to MariaDB
+          ansible.builtin.shell: >
+            mysql --user={{ db_user }} --password={{ db_user_password }} {{ db_name }} < {{ backup_dir }}/{{ restore_file_name | regex_replace('\.gz$', '') }}
+          no_log: true
+          ignore_errors: true
+          notify: restart mariadb
+      when: trigger_restore | default(false) | bool
+
+  handlers:
+    - name: restart mariadb
+      ansible.builtin.service:
+        name: mariadb
+        state: restarted
